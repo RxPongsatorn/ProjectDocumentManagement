@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from api.search import router as search_router
 from api.user_management import router as user_management_router
 from api.documents import router as documents_router
+from api.dashboard import router as dashboard_router
+from api.upload import router as upload_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import engine, ensure_schema
@@ -47,6 +49,8 @@ ensure_bootstrap_admin()
 app.include_router(search_router)
 app.include_router(user_management_router)
 app.include_router(documents_router)
+app.include_router(dashboard_router)
+app.include_router(upload_router)
 
 app.add_middleware(
     CORSMiddleware,

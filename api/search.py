@@ -1,18 +1,16 @@
-import os
-
 import numpy as np
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
+from app.document_access import can_list_document, can_view_unblinded, doc_path_for_api
 from app.embedded_text import embed_query
 from app.models import LegalCase, User
 
 router = APIRouter(prefix="/search")
 
-# ความคล้ายแบบ cosine similarity (0–1); รับเฉพาะที่ "มากกว่า" 60% (ไม่รวมพอดี 60.00%)
 MIN_COSINE_SIMILARITY = 0.6
 VECTOR_CANDIDATE_LIMIT = 100
 VECTOR_RESULT_LIMIT = 10
@@ -27,6 +25,14 @@ def _cosine_similarity(a: list, b: list) -> float:
     return float(np.dot(va, vb) / denom)
 
 
+def _visible_cases_filter(current_user: User):
+    """เผยแพร่แล้ว หรือฉบับร่างที่ user เป็นผู้สร้าง."""
+    return or_(
+        LegalCase.blind_published.is_(True),
+        LegalCase.created_by_user_id == current_user.id,
+    )
+
+
 @router.post("/")
 async def search_cases(
     q: str,
@@ -39,15 +45,15 @@ async def search_cases(
     candidates = (
         db.query(LegalCase)
         .filter(LegalCase.embedding.isnot(None))
+        .filter(_visible_cases_filter(current_user))
         .order_by(dist)
         .limit(VECTOR_CANDIDATE_LIMIT)
         .all()
     )
 
-    role = getattr(current_user, "role", "user") or "user"
     scored = []
     for r in candidates:
-        if r.embedding is None:
+        if r.embedding is None or not can_list_document(current_user, r):
             continue
         sim = _cosine_similarity(qv, list(r.embedding))
         if sim > MIN_COSINE_SIMILARITY:
@@ -66,16 +72,19 @@ async def search_cases(
 
     results = []
     for sim, r in scored:
-        can_unblind = role == "admin" and r.created_by_user_id == current_user.id
+        can_ub = can_view_unblinded(current_user, r)
         results.append(
             {
                 "id": r.id,
                 "casetype": r.casetype,
+                "event_date": r.event_date,
+                "blind_published": bool(r.blind_published),
                 "similarity": round(sim, 4),
                 "similarity_percent": round(sim * 100, 2),
-                "doc_path": r.doc_path if can_unblind else r.redacted_doc_path,
+                "doc_path": doc_path_for_api(current_user, r),
                 "redacted_doc_path": r.redacted_doc_path,
-                "can_view_unblinded": can_unblind,
+                "can_view_unblinded": can_ub,
+                "embedding_source_text": r.embedding_source_text if can_ub else None,
             }
         )
 
@@ -84,50 +93,3 @@ async def search_cases(
         "count": len(results),
         "min_similarity": MIN_COSINE_SIMILARITY,
     }
-
-# GET เอกสารทั้งหมด
-@router.get("/all")
-async def get_all_cases(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    rows = db.query(LegalCase).all()
-
-    return [
-        {
-            "id": r.id,
-            "casetype": r.casetype,
-            "doc_path": r.doc_path
-            if getattr(current_user, "role", "user") == "admin" and r.created_by_user_id == current_user.id
-            else r.redacted_doc_path,
-            "redacted_doc_path": r.redacted_doc_path,
-            "can_view_unblinded": getattr(current_user, "role", "user") == "admin"
-            and r.created_by_user_id == current_user.id,
-        }
-        for r in rows
-    ]
-
-@router.get("/download/{case_id}")
-async def download_case(
-    case_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    row = db.query(LegalCase).filter(LegalCase.id == case_id).first()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="ไม่พบเอกสาร")
-
-    can_view_unblinded = getattr(current_user, "role", "user") == "admin" and row.created_by_user_id == current_user.id
-    file_path = row.doc_path if can_view_unblinded else row.redacted_doc_path
-
-    if not file_path or not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="ไม่พบไฟล์เอกสาร")
-
-    filename = os.path.basename(file_path)
-
-    return FileResponse(
-        path=file_path,
-        filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )

@@ -14,24 +14,20 @@ class LegalCase(Base):
 
     event_date = Column(String)
     embedding = Column(Vector(768))
+    # ข้อความที่รวมแล้วส่งเข้า embed_text() ก่อนใส่ prefix "passage: " (สำหรับแสดง/ตรวจสอบ)
+    embedding_source_text = Column(Text, nullable=True)
     # original/unblinded document path
     doc_path = Column(Text)
     # blinded/redacted variants (safe to show to all authenticated users)
     redacted_doc_path = Column(Text, nullable=True)
     redacted_pdf_path = Column(Text, nullable=True)
 
+    # True = ฉบับ blind (redacted) ให้ user ทุกคนเห็น/ค้นได้; False = เห็นแค่ admin ผู้สร้าง
+    blind_published = Column(Boolean, nullable=False, default=False, server_default="false")
+
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_by_user = relationship("User", back_populates="created_cases")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # victim_name = Column(String)
-    # suspect_name = Column(String)
-    # fact_summary = Column(Text)
-    # legal_basis = Column(Text)
-    # prosecutor_opinion = Column(Text)
-    # search_text = Column(Text)
-
-  
 
 class User(Base):
     __tablename__ = "users"

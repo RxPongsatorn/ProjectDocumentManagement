@@ -50,6 +50,11 @@ class CaseRequest(BaseModel):
     plate_number: str | None = None
 
 
+class DocumentPublishRequest(BaseModel):
+    """เผยแพร่ฉบับ blind ให้ user ทุกคนเห็นได้ (หรือถอนเผยแพร่)."""
+    blind_published: bool
+
+
 class DocumentUpdateRequest(BaseModel):
     # for regenerate content; optional for partial update
     victim_name: Optional[str] = None

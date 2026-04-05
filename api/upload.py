@@ -21,9 +21,9 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.case_pipeline import process_case_text, build_raw_text_from_json
+from app.case_pipeline import process_case_text, process_case_dict
 from app.pdf_service import extract_text_from_pdf, normalize_thai_text
-from app.deps import require_admin
+from app.deps import get_current_user
 from app.models import User
 
 router = APIRouter(prefix="/upload")
@@ -45,21 +45,35 @@ class CaseRequest(BaseModel):
     id_card: str | None = None
     plate_number: str | None = None
 
+
+def _case_payload(data: CaseRequest) -> dict:
+    dump = getattr(data, "model_dump", None)
+    if callable(dump):
+        return dump()
+    return data.dict()
+
+
 @router.post("/json")
 async def upload_case_json(
     data: CaseRequest,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
-    case_data = data.dict()
-    raw_text = build_raw_text_from_json(case_data)
-    return process_case_text(raw_text, db, created_by_user_id=current_admin.id)
+    """
+    รับ JSON จากฟอร์ม — สร้าง Word จากข้อมูลตรงๆ (เส้นทางเดียวกับ POST /documents)
+    ไม่ผ่าน LLM re-extract เพื่อไม่ให้ค่าจากฟอร์มเพี้ยน
+    """
+    return process_case_dict(
+        _case_payload(data),
+        db,
+        created_by_user_id=current_user.id,
+    )
 
 @router.post("/pdf")
 async def upload_case_pdf(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="กรุณาอัปโหลดไฟล์ PDF เท่านั้น")
@@ -75,4 +89,4 @@ async def upload_case_pdf(
     if not normalized_text:
         raise HTTPException(status_code=400, detail="ไม่สามารถอ่านข้อความจาก PDF ได้")
 
-    return process_case_text(normalized_text, db, created_by_user_id=current_admin.id)
+    return process_case_text(normalized_text, db, created_by_user_id=current_user.id)

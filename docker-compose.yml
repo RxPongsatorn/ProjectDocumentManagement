@@ -19,6 +19,9 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://myuser:mypassword@db:5432/app_db
+      # ถ้า frontend คนละโดเมน + HTTPS: เปิดบรรทัดด้านล่าง (HTTP localhost อย่าใช้ secure=true)
+      # SESSION_COOKIE_SAMESITE: "none"
+      # SESSION_COOKIE_SECURE: "true"
     volumes:
       - .:/app
       - ./templates:/app/templates

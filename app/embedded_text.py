@@ -11,7 +11,7 @@ model = SentenceTransformer("intfloat/multilingual-e5-base")
 
 def build_search_text(d: dict) -> str:
     """
-    Text fed into the embedding model for indexing (same logic as api/vector_services NLP pipeline).
+    Text fed into the embedding model for indexing (same logic as app.nlp_processor / api/vector_test).
     """
     return _nlp.build_embedding_text(CaseData.from_extraction(d))
 
@@ -26,5 +26,7 @@ def embed_text(text: str) -> list:
 def embed_query(text: str) -> list:
     """Embed a user search query (E5 query prefix — use in /search, not for stored vectors)."""
     if not (text or "").strip():
-        text = ""
-    return model.encode(f"query: {text}").tolist()
+        return model.encode("query: ").tolist()
+    # บีบอัด query แบบเดียวกับ vector_test / ingest เพื่อให้ distribution ใกล้กัน
+    q = _nlp.preprocess_query_for_search(text)
+    return model.encode(f"query: {q}").tolist()

@@ -26,9 +26,11 @@ def process_case_text(
             casetype=text_extraction.get("case_type") or "",
             event_date=text_extraction.get("event_date") or "",
             embedding=embedding,
+            embedding_source_text=search_text,
             doc_path=original_doc,
             redacted_doc_path=redacted_doc,
             redacted_pdf_path=redacted_pdf,
+            blind_published=False,
             created_by_user_id=created_by_user_id,
         )
         db.add(row)
@@ -37,6 +39,7 @@ def process_case_text(
         row.casetype = text_extraction.get("case_type") or ""
         row.event_date = text_extraction.get("event_date") or ""
         row.embedding = embedding
+        row.embedding_source_text = search_text
         row.doc_path = original_doc
         row.redacted_doc_path = redacted_doc
         row.redacted_pdf_path = redacted_pdf
@@ -49,7 +52,60 @@ def process_case_text(
         "file_path": original_doc,
         "redacted_file_path": redacted_doc,
         "redacted_pdf_path": redacted_pdf,
-        "extraction": text_extraction
+        "extraction": text_extraction,
+        "embedding_source_text": search_text,
+        "blind_published": bool(row.blind_published),
+    }
+
+
+def process_case_dict(
+    case_data: dict,
+    db,
+    created_by_user_id: int | None = None,
+    existing_row: LegalCase | None = None,
+):
+    redacted_data = build_redacted_data(case_data)
+    search_text = build_search_text(redacted_data)
+    embedding = embed_text(search_text)
+
+    original_doc = generate_doc(case_data)
+    redacted_doc = generate_doc(redacted_data)
+    redacted_pdf = convert_docx_to_pdf(redacted_doc)
+
+    if existing_row is None:
+        row = LegalCase(
+            casetype=case_data.get("casetype") or case_data.get("case_type") or "",
+            event_date=case_data.get("event_date") or "",
+            embedding=embedding,
+            embedding_source_text=search_text,
+            doc_path=original_doc,
+            redacted_doc_path=redacted_doc,
+            redacted_pdf_path=redacted_pdf,
+            blind_published=False,
+            created_by_user_id=created_by_user_id,
+        )
+        db.add(row)
+    else:
+        row = existing_row
+        row.casetype = case_data.get("casetype") or case_data.get("case_type") or ""
+        row.event_date = case_data.get("event_date") or ""
+        row.embedding = embedding
+        row.embedding_source_text = search_text
+        row.doc_path = original_doc
+        row.redacted_doc_path = redacted_doc
+        row.redacted_pdf_path = redacted_pdf
+    db.commit()
+    db.refresh(row)
+
+    return {
+        "status": "done",
+        "case_id": row.id,
+        "file_path": original_doc,
+        "redacted_file_path": redacted_doc,
+        "redacted_pdf_path": redacted_pdf,
+        "extraction": case_data,
+        "embedding_source_text": search_text,
+        "blind_published": bool(row.blind_published),
     }
 
 
