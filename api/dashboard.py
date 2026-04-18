@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_admin
+from app.document_access import legal_case_has_content_clause
 from app.models import LegalCase, User
 router = APIRouter(prefix="/admin", tags=["admin_dashboard"])
 @router.get("/dashboard")
@@ -27,10 +28,7 @@ def admin_dashboard(
     total_documents = db.query(func.count(LegalCase.id)).scalar() or 0
     with_blinded = (
         db.query(func.count(LegalCase.id))
-        .filter(
-            LegalCase.redacted_doc_path.isnot(None),
-            LegalCase.redacted_doc_path != "",
-        )
+        .filter(legal_case_has_content_clause())
         .scalar()
         or 0
     )

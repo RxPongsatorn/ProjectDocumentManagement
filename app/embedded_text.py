@@ -9,8 +9,12 @@ def embed_text(text: str) -> list:
     if not (text or "").strip():
         text = ""
     return model.encode(f"passage: {text}").tolist()
-def embed_query(text: str) -> list:
+def preprocess_query_for_search(text: str) -> str:
+    return _nlp.preprocess_query_for_search(text)
+
+
+def embed_query(text: str, *, already_preprocessed: bool = False) -> list:
     if not (text or "").strip():
         return model.encode("query: ").tolist()
-    q = _nlp.preprocess_query_for_search(text)
+    q = text if already_preprocessed else _nlp.preprocess_query_for_search(text)
     return model.encode(f"query: {q}").tolist()

@@ -2,8 +2,6 @@ FROM python:3.10
 
 RUN apt-get update && \
     apt-get install -y --fix-missing --no-install-recommends \
-    libreoffice \
-    libreoffice-writer \
     fontconfig \
     fonts-dejavu \
     fonts-thai-tlwg \

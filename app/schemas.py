@@ -1,5 +1,6 @@
 from typing import Literal, Optional
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -30,3 +31,9 @@ class CaseRequest(BaseModel):
     bank_account: str | None = None
     id_card: str | None = None
     plate_number: str | None = None
+
+
+class BulkCaseImportRequest(BaseModel):
+    """Multiple cases per request; use JSON key items as a list of cases."""
+
+    items: list[CaseRequest] = Field(..., min_length=1)

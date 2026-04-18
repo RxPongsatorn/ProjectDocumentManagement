@@ -10,6 +10,5 @@ faiss-cpu
 torch
 passlib
 ollama
-pdfplumber
 pythainlp
 python-multipart

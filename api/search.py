@@ -3,9 +3,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
-from app.document_access import can_view_unblinded, has_public_blinded_copy, is_admin
-from app.embedded_text import embed_query
+from app.document_access import (
+    can_view_unblinded,
+    has_public_blinded_copy,
+    is_admin,
+    legal_case_has_content_clause,
+)
+from app.embedded_text import embed_query, preprocess_query_for_search
 from app.models import LegalCase, User
+
 router = APIRouter(prefix="/search", tags=["search"])
 MIN_COSINE_SIMILARITY = 0.6
 VECTOR_CANDIDATE_LIMIT = 100
@@ -23,18 +29,16 @@ async def search_cases(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    qv = embed_query(q)
+    q_prep = preprocess_query_for_search(q)
+    qv = embed_query(q_prep, already_preprocessed=True)
     dist = LegalCase.embedding.cosine_distance(qv)
     query = (
         db.query(LegalCase)
         .filter(LegalCase.embedding.isnot(None))
+        .filter(legal_case_has_content_clause())
         .order_by(dist)
         .limit(VECTOR_CANDIDATE_LIMIT)
     )
-    if not is_admin(current_user):
-        query = query.filter(LegalCase.redacted_doc_path.isnot(None)).filter(
-            LegalCase.redacted_doc_path != ""
-        )
     candidates = query.all()
     scored = []
     for r in candidates:
