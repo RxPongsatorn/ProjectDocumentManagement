@@ -20,7 +20,7 @@ class AdminUpdateUserRequest(BaseModel):
     role: Optional[Role] = None
     is_active: Optional[bool] = None
 class CaseRequest(BaseModel):
-    victim_name: str
+    victim_name: str = ""
     suspect_name: str
     event_date: str
     fact_summary: str

@@ -58,8 +58,17 @@ def resolve_fact_summary_blinded(row: LegalCase) -> str:
 def is_admin(user: User) -> bool:
     return (getattr(user, "role", None) or "user") == "admin"
 def can_view_unblinded(user: User, row: LegalCase) -> bool:
-    """ผู้สร้างเคสเห็นข้อมูลเต็มและดาวน์โหลดฉบับไม่ปกปิดได้ (ไม่จำกัดเฉพาะ admin)."""
-    return row.created_by_user_id is not None and row.created_by_user_id == user.id
+    """
+    เห็นข้อมูลเต็ม (fact_summary ฯลฯ) และดาวน์โหลดฉบับไม่ปกปิดได้ เฉพาะเมื่อ
+    เป็น admin และเป็นผู้สร้างเคสนั้นเอง
+
+    ผู้ใช้ทั่วไป (role user) จะได้เฉพาะมุมมอง/ไฟล์ที่ปกปิดเสมอ แม้เป็นคนสร้างเอกสารนั้น
+    """
+    return (
+        is_admin(user)
+        and row.created_by_user_id is not None
+        and row.created_by_user_id == user.id
+    )
 def has_public_blinded_copy(row: LegalCase) -> bool:
     """True if blind/download variant can be produced (has case content in DB)."""
     return row_has_case_content(row)
