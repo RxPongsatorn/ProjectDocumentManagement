@@ -46,10 +46,20 @@ def _case_fields_for_response(row: LegalCase) -> dict:
         "id_card": row.id_card or "",
         "plate_number": row.plate_number or "",
     }
+
+
+def resolve_fact_summary_blinded(row: LegalCase) -> str:
+    """Stored blinded summary, or computed for legacy rows without the column filled."""
+    stored = getattr(row, "fact_summary_blinded", None)
+    if stored is not None and str(stored).strip():
+        return str(stored)
+    raw = _case_fields_for_response(row)
+    return (build_redacted_data(raw).get("fact_summary") or "").strip()
 def is_admin(user: User) -> bool:
     return (getattr(user, "role", None) or "user") == "admin"
 def can_view_unblinded(user: User, row: LegalCase) -> bool:
-    return is_admin(user) and row.created_by_user_id == user.id
+    """ผู้สร้างเคสเห็นข้อมูลเต็มและดาวน์โหลดฉบับไม่ปกปิดได้ (ไม่จำกัดเฉพาะ admin)."""
+    return row.created_by_user_id is not None and row.created_by_user_id == user.id
 def has_public_blinded_copy(row: LegalCase) -> bool:
     """True if blind/download variant can be produced (has case content in DB)."""
     return row_has_case_content(row)
@@ -88,6 +98,7 @@ def serialize_case(
         "victim_name": content["victim_name"],
         "suspect_name": content["suspect_name"],
         "fact_summary": content["fact_summary"],
+        "fact_summary_blinded": resolve_fact_summary_blinded(row),
         "legal_basis": content["legal_basis"],
         "prosecutor_opinion": content["prosecutor_opinion"],
         "doc_path": path,

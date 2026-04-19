@@ -12,6 +12,7 @@ class LegalCase(Base):
     victim_name = Column(Text, nullable=True)
     suspect_name = Column(Text, nullable=True)
     fact_summary = Column(Text, nullable=True)
+    fact_summary_blinded = Column(Text, nullable=True)
     legal_basis = Column(Text, nullable=True)
     prosecutor_opinion = Column(Text, nullable=True)
     bank_account = Column(Text, nullable=True)

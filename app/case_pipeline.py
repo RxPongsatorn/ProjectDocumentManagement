@@ -93,6 +93,7 @@ def _persist_case_row(
             created_by_user_id=created_by_user_id,
         )
         _apply_payload_to_row(row, payload)
+        row.fact_summary_blinded = redacted_data.get("fact_summary") or ""
         db.add(row)
     else:
         row = existing_row
@@ -101,6 +102,7 @@ def _persist_case_row(
         _apply_payload_to_row(row, payload)
         row.embedding = embedding
         row.embedding_source_text = search_text
+        row.fact_summary_blinded = redacted_data.get("fact_summary") or ""
     db.commit()
     db.refresh(row)
     return row

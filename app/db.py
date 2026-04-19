@@ -18,6 +18,7 @@ def ensure_schema() -> None:
         "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS redacted_doc_path TEXT",
         "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS embedding_source_text TEXT",
+        "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS fact_summary_blinded TEXT",
         "ALTER TABLE legal_cases ALTER COLUMN doc_path DROP NOT NULL",
         "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS victim_name TEXT",
         "ALTER TABLE legal_cases ADD COLUMN IF NOT EXISTS suspect_name TEXT",

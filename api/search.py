@@ -6,8 +6,8 @@ from app.deps import get_current_user
 from app.document_access import (
     can_view_unblinded,
     has_public_blinded_copy,
-    is_admin,
     legal_case_has_content_clause,
+    resolve_fact_summary_blinded,
 )
 from app.embedded_text import embed_query, preprocess_query_for_search
 from app.models import LegalCase, User
@@ -73,6 +73,8 @@ async def search_cases(
                 "redacted_doc_path": r.redacted_doc_path,
                 "can_view_unblinded": can_ub,
                 "variant_shown": "unblinded" if can_ub else "blinded",
+                "fact_summary": r.fact_summary if can_ub else None,
+                "fact_summary_blinded": resolve_fact_summary_blinded(r),
                 "embedding_source_text": r.embedding_source_text if can_ub else None,
             }
         )
