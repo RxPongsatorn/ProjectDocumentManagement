@@ -1,7 +1,6 @@
 import os
 from typing import Any
 
-from app.ai_service import classify_text
 from app.build_redacted_data import build_redacted_data
 from app.embedded_text import build_search_text, embed_text
 from app.generate_doc import generate_doc
@@ -146,30 +145,6 @@ def finalize_case_documents(case_id: int, db) -> dict[str, Any]:
         return _write_generated_files(row, db)
     except ValueError as e:
         return {"error": str(e)}
-
-
-def process_case_text(
-    raw_text: str,
-    db,
-    created_by_user_id: int | None = None,
-    existing_row: LegalCase | None = None,
-):
-    text_extraction = classify_text(raw_text)
-    case_payload = _normalize_case_payload(text_extraction)
-    row = _persist_case_row(
-        case_payload, db, created_by_user_id=created_by_user_id, existing_row=existing_row
-    )
-    redacted_data = build_redacted_data(case_payload)
-    search_text = build_search_text(redacted_data)
-    return {
-        "status": "saved",
-        "case_id": row.id,
-        "documents_generated": False,
-        "file_path": row.doc_path,
-        "redacted_file_path": row.redacted_doc_path,
-        "extraction": text_extraction,
-        "embedding_source_text": search_text,
-    }
 
 
 def process_case_dict(

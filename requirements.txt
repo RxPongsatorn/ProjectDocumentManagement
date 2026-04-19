@@ -6,9 +6,7 @@ docxtpl
 pgvector
 sentence-transformers
 numpy
-faiss-cpu
 torch
 passlib
-ollama
 pythainlp
 python-multipart
